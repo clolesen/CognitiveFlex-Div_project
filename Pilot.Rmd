@@ -1,0 +1,147 @@
+---
+title: "Pilot analysis"
+author: "Christoffer Lundbak Olesen"
+date: "9/5/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+
+
+DATA PRE-POCESSING
+
+```{r Data Pre-pocessing}
+#PAIR DATA
+#List of log file locations
+files = list.files(path = "Pilot_data/all_pair_logs/", pattern="*.csv", full.names = T)
+
+#make data frame from all the log files
+full_data = data.frame()
+for (f in files){
+  log = read.csv(f)
+  full_data = rbind(full_data,log)
+}
+
+# Correcting wrongly recorded data
+# Subject 10 and 11 pair 6 was recorded as subject 5 and 6 pair 1 
+# (Because of technical error)
+wrong_data = subset(full_data, sbj_id %in% 5:6 & pair_id == 1)
+wrong_data[wrong_data$sbj_id==5,"sbj_id"] = 10
+wrong_data[wrong_data$sbj_id==6,"sbj_id"] = 11
+wrong_data[,"pair_id"] = 6
+full_data[full_data$sbj_id %in% 5:6 & full_data$pair_id == 1,] = wrong_data
+
+train_data = subset(full_data, block == "training")
+test_data = subset(full_data, block == "test")
+
+#test data with non-reseting trial numbers (for visualization)
+test_data2 = test_data
+for (pair in unique(test_data2$pair_id)){
+  for (rule in 2:8){
+    max = max(subset(test_data2, pair_id == pair & rule_num == rule)[,"trial"])
+    test_data2[test_data2$pair_id == pair & test_data2$rule_num == rule+1,"trial"] = test_data2[test_data2$pair_id == pair & test_data2$rule_num == rule+1,"trial"] + max + 1
+  }
+}
+
+
+
+#ALL DATA
+allfiles = list.files(path = "Pilot_data/all_logs/", pattern="*.csv", full.names = T)
+
+#make data frame from all the log files
+all_data = data.frame()
+for (f in allfiles){
+  log = read.csv(f)
+  all_data = rbind(all_data,log)
+}
+
+all_train_data = subset(all_data, block == "training")
+
+
+
+sara_data = read.csv("Pilot_data/sara.csv")
+joao_data = read.csv("Pilot_data/joao.csv")
+harald_data = read.csv("Pilot_data/harald.csv")
+
+
+```
+
+
+PLOTS
+```{r Plots}
+
+# Test plots
+ggplot(test_data2, aes(x = trial, y = points)) +
+  geom_point(aes(color = as.factor(rule_num))) +
+  geom_line(aes(color = as.factor(rule_num)), size = 0.1) +
+  facet_wrap(~ pair_id + condition)
+
+ggplot(test_data2, aes(x = wall_time, y = points)) +
+  geom_point(aes(color = as.factor(rule_num))) +
+  geom_line(aes(color = as.factor(rule_num)), size = 0.1) +
+  facet_wrap(~ pair_id + condition)
+
+#respons pattern
+ggplot(test_data, aes(x = trial, y = choice)) +
+  geom_point(size = 0.5) +
+  facet_wrap(~ pair_id + rule_num)
+
+# reaction time
+ggplot(test_data, aes(x = reaction_time)) + 
+  geom_histogram(bins = 50) +
+  facet_wrap(~ pair_id + condition)+
+  xlim(0,15)
+
+
+
+
+
+# training plots
+ggplot(train_data, aes(x = trial, y = points)) +
+  geom_point(aes(color = as.factor(sbj_id)),size = 0.2) +
+  geom_line(aes(color = as.factor(sbj_id)), size = 0.1)
+
+#respons pattern for sbj 7 and 8
+ggplot(subset(train_data, sbj_id %in% 7:8), aes(x = trial, y = choice)) +
+  geom_point(size = 0.5) +
+  facet_wrap(~ sbj_id)
+# sbj 7 and 8 are both pair 4
+
+# reaction time
+ggplot(train_data, aes(x = reaction_time)) + 
+  geom_histogram(bins = 50) +
+  facet_wrap(~ sbj_id + pair_id) +
+  xlim(0,15)
+
+# all subjects
+ggplot(all_train_data, aes(x = trial, y = points)) +
+  geom_point(aes(color = as.factor(sbj_id)),size = 0.2)
+
+
+
+
+
+#SARA
+ggplot(subset(sara_data, block == "training"), aes(x = (wall_time-85.73402)/60, y = points)) +
+  geom_point(aes(color = as.factor(sbj_id)),size = 0.2) +
+  geom_line(aes(color = as.factor(sbj_id)), size = 0.1)
+
+ggplot(subset(joao_data, block == "training"), aes(x = (wall_time-42.84530)/60, y = points)) +
+  geom_point(aes(color = as.factor(sbj_id)),size = 0.2) +
+  geom_line(aes(color = as.factor(sbj_id)), size = 0.1)
+
+ggplot(subset(harald_data, block == "training"), aes(x = trial, y = points)) +
+  geom_point(aes(color = as.factor(sbj_id)),size = 0.2) +
+  geom_line(aes(color = as.factor(sbj_id)), size = 0.1)
+
+
+
+
+```
+
+
